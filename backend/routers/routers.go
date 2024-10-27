@@ -18,13 +18,12 @@ func InitRouter() *gin.Engine {
 	r.Use(gin.Recovery())
 	r.StaticFS("/static", http.Dir("static"))
 	r.Use(cors.New(cors.Config{
-		AllowAllOrigins: true, // 允许所有来源
-		// 或者只允许特定来源
-		// AllowOrigins: []string{"http://localhost:8080"},
-		AllowMethods:  []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:  []string{"Origin", "Content-Type", "Authorization"},
-		ExposeHeaders: []string{"Content-Length"},
-		MaxAge:        12 * time.Hour,
+		AllowOrigins:     []string{"http://192.168.1.103:8080"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		MaxAge:           12 * time.Hour,
+		AllowCredentials: true,
 	}))
 
 	// 定义路由

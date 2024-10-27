@@ -19,24 +19,30 @@ type CustomClaims struct {
 	jwt.RegisteredClaims
 }
 
-// GenToken生成JWT
+// GenToken 生成 JWT
 func GenToken(username string, userId int64) (string, error) {
 	expire := time.Now().Add(settings.TokenExpireDuration)
-	//Create our 'Claim'
 	claims := CustomClaims{
-		username,
-		userId,
-		jwt.RegisteredClaims{
-			Issuer: "kioshiro",
+		Username: username,
+		UserId:   userId,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "kioshiro",
+			ExpiresAt: jwt.NewNumericDate(expire), // 设置过期时间
 		},
 	}
-	// 使用指定的签名方法创建签名对象
+
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	token, err := t.SignedString(settings.Secret)
-	//Token写入数据库
+	if err != nil {
+		return "", err // 返回错误
+	}
+
+	// Token写入数据库
 	j := models.Jwts{Token: token, Expire: expire}
-	models.DB.Create(j)
-	return token, err
+	if err := models.DB.Create(&j).Error; err != nil {
+		return "", err // 返回数据库错误
+	}
+	return token, nil
 }
 
 // ParseToken 解析JWT
@@ -56,46 +62,59 @@ func ParseToken(tokenString string) (*CustomClaims, error) {
 	return nil, errors.New("invalid token")
 }
 func JWTAuthMiddleware(c *gin.Context) {
-	// Client Token types: 1. put in 'head'; 2. put in 'body'; 3. put in 'URL'
-	// user type 1
-	authHeader := c.Request.Header.Get("Authorozation")
+	authHeader := c.Request.Header.Get("Authorization")
 	if authHeader == "" {
-		c.JSON(http.StatusOK, gin.H{ // TODO: Why OK?
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"state": "fail",
 			"msg":   "请求头的Authorization为空",
 		})
 		c.Abort()
 		return
 	}
-	mc, err := ParseToken(authHeader) //myClaim
+
+	mc, err := ParseToken(authHeader)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"state": "fail",
-			"mag":   "无效的Token",
+			"msg":   "无效的Token",
 		})
 		c.Abort()
 		return
 	}
+
 	var jwts models.Jwts
-	models.DB.Where("token = ?", authHeader).First(&jwts)
-	if jwts.Token != "" {
-		if jwts.Expire.After(time.Now()) {
-			jwts.Expire = time.Now().Add(settings.TokenExpireDuration)
-			models.DB.Save(&jwts)
-		} else {
-			// 删除表数据
-			models.DB.Unscoped().Delete(&jwts)
+	result := models.DB.Where("token = ?", authHeader).First(&jwts)
+	if result.Error != nil || jwts.Token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"state": "fail",
+			"msg":   "无效的Token",
+		})
+		c.Abort()
+		return
+	}
+
+	if jwts.Expire.After(time.Now()) {
+		// 如果 token 有效，刷新过期时间
+		jwts.Expire = time.Now().Add(settings.TokenExpireDuration)
+		if err := models.DB.Save(&jwts).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"state": "fail",
+				"msg":   "更新Token失败",
+			})
+			c.Abort()
+			return
 		}
 	} else {
-		c.JSON(http.StatusOK, gin.H{
+		// Token 已过期，删除表数据
+		models.DB.Unscoped().Delete(&jwts)
+		c.JSON(http.StatusUnauthorized, gin.H{
 			"state": "fail",
-			"msg": "无效的Token",
+			"msg":   "Token已过期",
 		})
 		c.Abort()
 		return
 	}
-	// 将当前请求的username信息保存到请求的上下文c上
-	// 路由函数通过处理c.Get("username")；哎获取当前请求的用户信息
+
 	c.Set("userId", mc.UserId)
 	c.Set("username", mc.Username)
 	c.Next()

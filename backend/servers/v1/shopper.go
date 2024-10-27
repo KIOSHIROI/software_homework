@@ -4,8 +4,6 @@ import (
 	"backend/middleware"
 	"backend/models"
 	"backend/settings"
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -14,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/smartwalle/alipay/v3"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func ShopperLogin(c *gin.Context) {
@@ -23,65 +22,67 @@ func ShopperLogin(c *gin.Context) {
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}
-	c.BindJSON(&body)
+	if err := c.BindJSON(&body); err != nil {
+		context["msg"] = "请求数据无效"
+		c.JSON(http.StatusBadRequest, context)
+		return
+	}
+
 	username := body.Username
-	p := body.Password
-	if username != "" && p != "" {
-		context["state"] = "success"
+	password := body.Password
+	if username != "" && password != "" {
 		// 生成登录时间
 		lastLogin := time.Now()
 		context["last_login"] = lastLogin.Format("2006-01-02 15:04:05")
-		// 密码加密
-		m := md5.New()
-		m.Write([]byte(p))
-		password := hex.EncodeToString(m.Sum(nil))
-		// 查找用户, 用户存在则登录成功，不存在则创建
-		var userID uint
-		var users models.Users
-		models.DB.Where("username = ?", username).First(&users)
-		if users.ID > 0 {
-			if users.Password == password {
-				userID = users.ID
-				users.LastLogin = lastLogin
-				models.DB.Save(&users)
-				context["msg"] = "登陆成功"
-			} else {
+
+		// 查找用户
+		var user models.Users
+		result := models.DB.Where("username = ?", username).First(&user)
+
+		if result.Error == nil {
+			// 用户存在，验证密码
+			fmt.Println("username exists.")
+			err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+
+			if err != nil {
 				context["msg"] = "请输入正确密码"
-				context["state"] = "fail"
+			} else {
+				fmt.Println("successful login.")
+				// 登录成功，更新最后登录时间
+				user.LastLogin = lastLogin
+				models.DB.Save(&user)
+
+				context["state"] = "success"
+				context["msg"] = "登录成功"
+				context["result"] = true
 			}
 		} else {
-			context["mag"] = "注册成功"
-			r := models.Users{Username: username, Password: password, IsStaff: 1, LastLogin: lastLogin} //TODO: 不需要加密吗？已加密
-			models.DB.Create(&r)
-			if r.ID > 0 {
-				userID = r.ID
-			} else {
+			newUser := models.Users{
+				Username:  username,
+				Password:  password,
+				IsStaff:   1,
+				LastLogin: lastLogin,
+			}
+
+			if err := models.DB.Create(&newUser).Error; err != nil {
 				context["msg"] = "注册失败"
-				context["state"] = "fail"
+				c.JSON(http.StatusInternalServerError, context)
+				return
+			}
+
+			context["state"] = "success"
+			context["msg"] = "注册成功"
+		}
+
+		// 创建Token
+		if user.ID > 0 {
+			token, err := middleware.GenToken(username, int64(user.ID))
+			if err == nil {
+				context["token"] = token
 			}
 		}
-		// 创建Token
-		token := ""
-		if userID > 0 {
-			token, _ = middleware.GenToken(username, int64(userID))
-		}
-		context["token"] = token
 	}
-	c.JSON(http.StatusOK, context)
-}
 
-func ShopperLogout(c *gin.Context) {
-	context := gin.H{"state": "fail", "msg": "请求失败"}
-	userId, _ := c.Get("userId")
-	if userId != 0 {
-		authHeader := c.Request.Header.Get("Authorization")
-		if authHeader != "" {
-			var jwts models.Jwts
-			models.DB.Where("token = ?", authHeader).First(&jwts)
-			models.DB.Unscoped().Delete(&jwts)
-			context = gin.H{"state": "success", "msg": "退出成功"}
-		}
-	}
 	c.JSON(http.StatusOK, context)
 }
 
@@ -185,7 +186,20 @@ func ShopperPays(c *gin.Context) {
 	fmt.Println(payURL)
 	c.JSON(http.StatusOK, context)
 }
-
+func ShopperLogout(c *gin.Context) {
+	context := gin.H{"state": "fail", "msg": "退出失败"}
+	userId, _ := c.Get("userId")
+	if userId != 0 {
+		authHeader := c.Request.Header.Get("Authorization")
+		if authHeader != "" {
+			var jwts models.Jwts
+			models.DB.Where("token = ?", authHeader).First(&jwts)
+			models.DB.Unscoped().Delete(&jwts)
+			context = gin.H{"state": "success", "msg": "退出成功"}
+		}
+	}
+	c.JSON(http.StatusOK, context)
+}
 func ShopperHome(c *gin.Context) {
 	context := gin.H{"state": "success", "msg": "获取成功"}
 	data := gin.H{}

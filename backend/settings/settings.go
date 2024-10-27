@@ -1,22 +1,23 @@
 package settings
 
 import (
-	"github.com/gin-gonic/gin"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type Database struct {
-	User string
+	User     string
 	Password string
-	Host string
-	Name string
+	Host     string
+	Name     string
 }
 
 var MySQLSetting = &Database{
-	User:	"root",
+	User:     "root",
 	Password: "bxy040629",
-	Host:	"127.0.0.1:3306",
-	Name:	"baby",
+	Host:     "127.0.0.1:3306",
+	Name:     "baby",
 }
 
 // DebugMode/ReleaseMode/TestMode
@@ -26,13 +27,12 @@ var Mode = gin.ReleaseMode
 var TokenExpireDuration = time.Minute * 30
 
 // JWT 加密盐
-var Secret = []byte("你好")
+var Secret = []byte("bxy")
 
 // 分页功能
 var PageSize = 6
 
-//支付信息
+// 支付信息
 var AppId = "2021004182638631"
 var AlipayPublicKeyString = `MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzs1iMMX4u0pm6Vo/FmFAOPxTR/wwhidLA6oF7gLpDmU88WWiNhErbJKbiKW/vIVUJ9NslAqph695MxzfcyFEJW6ZeSg8q1N58WCpchW9k/eJ7uE5KvmyNxzU3+zzvfhjs40TYe3c/GTNgS/mRvb3wVvcFtce7KfF4yHh9TJ5qrJsaxSXufKGnoh294Y+bOkx/uXeKG30mHYHxZcQs6Pg6kRvX9ZtdizxDHIUhlVHoyMLp68Xxq6DL78roqsYMx074xVS4Kk5dt2lnly4puZXneuVwLL+VMBunvD09reuh8MFSpBZcRVgHgN0QmAZWxUx/lAJ1TH/CLgSL+gWPTOcwwIDAQAB`
 var AppPrivateKeyString = `MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDOzWIwxfi7SmbpWj8WYUA4/FNH/DCGJ0sDqgXuAukOZTzxZaI2EStskpuIpb+8hVQn02yUCqmHr3kzHN9zIUQlbpl5KDyrU3nxYKlyFb2T94nu4Tkq+bI3HNTf7PO9+GOzjRNh7dz8ZM2BL+ZG9vfBW9wW1x7sp8XjIeH1MnmqsmxrFJe58oaeiHb3hj5s6TH+5d4obfSYdgfFlxCzo+DqRG9f1m12LPEMchSGVUejIwunrxfGroMvvyuiqxgzHTvjFVLgqTl23aWeXLim5led65XAsv5UwG6e8PT2t66HwwVKkFlxFWAeA3RCYBlbFTH+UAnVMf8IuBIv6BY9M5zDAgMBAAECggEAeUgkVNxV8mlBD4u4wgRI6OK6aNYzEwpKSRzWm26jhajD5AKp7jGFmQgmJS6n0wUShMTOwce7AvNbDinZtiiFUbqaUV7SrduoAXKiDWFIrFWZVDpMD7Me3ImRIr5ReFELD8sl2eHpHzBzAVe5IldGl+Sqn86LuVjvijRd0zJF/l/VZY9RV4mthMqJIZqRrcjAi/GgKPy/pbLXbYNzOZ2xy4b8V5isybXwIiQTCNnVOj/h6Yq7UnQZXXsjpodbxdlqegSYx0CFzpMLU+S9lQAmqu1y2z32kbaapAbu3M+j4mt01mYYn0jBZc2vv46xGuo653Na8qotDSGqZFf9IoJdmQKBgQDwjHnkFZum/TnJjymJ2ECRwPle9QZpqA0xdY0VSOowCEGiwRdbNpzgSSND7pwjQi+pJ1w6K2cvyVxy5ZllJcjQJkSW2wfAZyBZUrpYAIWUY4ujFJqsqsKAif6aE5P4OZk8SmZ9EwFZ7ILiR8KRScKf+izGl7yvxM+GLleaC0P7PQKBgQDcFf0zA3PYxfJonbjfcikdAOeq0SQsWVgNNq0fLxEimrlakRytPpQtFU/OWu7OViqeuTo/vhc7F3DeLF4dSzm1rjweMYrEO3lSFXuyQCcmkf6BPo5YlHNM+JvT9Wf6hdLUUWWGusxAcXafTiEv5baghmrSSiA479jN7sCZHK93/wKBgHoKq2Te2aO1YfYzHh4Di27nex2ELwa37kmjnDqqTbak2bgbQyBR6vGX6b5zduAkmk213ILetnF2NeNNPbAlpWaFo9LtuVcSe0UWRdiUGzGX96Z7s6Xa1OemG3hMaoxLnMUL8keOtubKqfTn930C8S19He572Y1LywYGyQcspAb5AoGANPtyLfK508ird7XoiJox/ZJ3Mu8QN0D26o9sE+K/zEXVM1FVxvsWrte/k5zeenvR3M4YkLnRW99jw4iIy6KNbQhZ3qbskhsDNNiJI7s/8ZAZ5cFKgVaTf0cmNFuSwYOv4n8J4upbO3RVKzqi0KYLVg+l7aP8p9hNqB2+7d0y/L8CgYEAt3+c9UYWpC8b1Pa4imUSMAjPpmB+wZ0X/Mw5CEtZo+wvx5Olk2D9ZeuEFc5V5QOP23N/8X43wBZAwmEwUX8NhSghUjyp+IsV6xYTKaJZngxg9Ptav51TDEr+0a4yiS6/dOJfUj8gfnYwGPynI+NtYq1+073EO6qJUCYKrMi9w5I`
-

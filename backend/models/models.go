@@ -2,11 +2,10 @@ package models
 
 import (
 	"backend/settings"
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -74,10 +73,12 @@ type Jwts struct {
 }
 
 // define Hook func of 'Users'
-func (u *Users) BeforeSave(db *gorm.DB) error {
-	m := md5.New()
-	m.Write([]byte(u.Password))
-	u.Password = hex.EncodeToString(m.Sum(nil))
+func (u *Users) BeforeCreate(db *gorm.DB) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	u.Password = string(hashedPassword)
 	return nil
 }
 
