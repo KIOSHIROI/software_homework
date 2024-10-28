@@ -13,7 +13,7 @@ func init() {
 }
 
 func main() {
-	localIP := "192.168.1.106"
+	localIP := "192.168.1.104"
 	server := &http.Server{
 		Addr:         fmt.Sprintf("%s:8000", localIP),
 		Handler:      routers.InitRouter(),

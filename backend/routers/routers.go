@@ -59,5 +59,14 @@ func InitRouter() *gin.Engine {
 		shopper.POST("shopper/delete/", v1.ShopperDelete)
 	}
 
+	seller := apiv1.Group("seller/")
+	{
+		seller.GET("home")
+	}
+
+	admin := apiv1.Group("admin/")
+	{
+		admin.GET("home")
+	}
 	return r
 }
