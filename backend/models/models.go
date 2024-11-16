@@ -30,6 +30,8 @@ type Commodities struct {
 	Created  time.Time `json:"created"`
 	Img      string    `json:"img" gorm:"type:varchar(255)"`
 	Details  string    `json:"details" gorm:"type:varchar(255)"`
+	SellerId int64     `json:"sellerId"`
+	Seller   Users     `json:"-" gorm:"foreignkey:SellerId"`
 }
 
 type Users struct {
@@ -53,7 +55,7 @@ type Orders struct {
 	gorm.Model
 	Price   string `json:"price" gorm:"type:varchar(255)"`
 	PayInfo string `json:"payInfo" gorm:"type:varchar(255)"`
-	UserId  int64
+	UserId  int64	`json:"userId"`
 	Users   Users `json:"-" gorm:"foreignkey:UserId"`
 	State   int64 `json:"state"`
 }

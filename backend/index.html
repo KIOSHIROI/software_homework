@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8">
+  <title>Gin-WebSocket</title>
+  <style>
+    html,
+    body {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    #message {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+
+<body>
+  <span id="connected">WebSocket连接中...</span>
+  <span id="onlineClientNum"></span>
+  <span id="historyClientNum"></span>
+  <div id="message"></div>
+  <div><input id="input" /><button onclick="send()">发送</button></div>
+  <script>
+    const ws = new WebSocket("chat");
+    // 连接成功时触发
+    ws.onopen = () => {
+      document.getElementById('connected').innerText = 'WebSocket连接成功'
+    }
+    // 接收到消息时触发  
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data)
+      switch (data._event) {
+        case "connected":
+          document.getElementById('historyClientNum').innerText = '历史：' + data.historyClientNum
+          document.getElementById('onlineClientNum').innerText = '在线：' + data.onlineClientNum
+          break;
+        case "message":
+          const span = document.createElement('span')
+          span.innerText = data.message
+          document.getElementById('message').appendChild(span)
+          break;
+        default:
+          break;
+      }
+    };
+    // 连接关闭时触发  
+    ws.onclose = (e) => {
+      document.getElementById('connected').innerText = 'WebSocket连接中...'
+    };
+    // 发送消息
+    const send = () => {
+      const value = document.getElementById('input').value
+      if (value) {
+        document.getElementById('input').value = ''
+        ws.send(value)
+      }
+    }
+  </script>
+</body>
+</html>

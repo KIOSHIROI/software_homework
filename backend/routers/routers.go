@@ -3,6 +3,7 @@ package routers
 import (
 	"backend/middleware"
 	v1 "backend/servers/v1"
+	"backend/servers/v1/chats"
 	"backend/settings"
 	"net/http"
 	"time"
@@ -16,9 +17,9 @@ func InitRouter() *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	r.StaticFS("/static", http.Dir("static"))
+	r.StaticFS("/images", http.Dir("F:/mall/commodity/images/"))
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://192.168.1.103:8080"},
+		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -28,6 +29,18 @@ func InitRouter() *gin.Engine {
 
 	// 定义路由
 	apiv1 := r.Group("api/v1/")
+
+	chat := chats.NewChat()
+	go chat.Run()
+
+	r.LoadHTMLFiles("index.html")
+
+	r.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", nil)
+	})
+	r.GET("/chat/", func(ctx *gin.Context) {
+		chats.CreateWs(ctx, chat)
+	})
 
 	commodity := apiv1.Group("")
 	{
@@ -39,6 +52,7 @@ func InitRouter() *gin.Engine {
 		commodity.GET("commodity/detail/:id/", v1.CommodityDetail)
 		// 用户注册登录
 		commodity.POST("shopper/login/", v1.ShopperLogin)
+		commodity.POST("shopper/logout/", v1.ShopperLogout)
 	}
 	shopper := apiv1.Group("")
 	shopper.Use(middleware.JWTAuthMiddleware)
@@ -46,7 +60,6 @@ func InitRouter() *gin.Engine {
 		// 商品收藏
 		shopper.POST("commodity/collect/", v1.CommodityCollect)
 		// 退出登录
-		shopper.POST("commodity/logout/", v1.ShopperLogout)
 		// 个人主页
 		shopper.GET("shopper/home/", v1.ShopperHome)
 		// 加入购物车
@@ -57,16 +70,30 @@ func InitRouter() *gin.Engine {
 		shopper.POST("shopper/pays/", v1.ShopperPays)
 		// 删除购物车商品
 		shopper.POST("shopper/delete/", v1.ShopperDelete)
+		shopper.POST("shopper/order/delete", v1.DeleteOrder)
 	}
 
 	seller := apiv1.Group("seller/")
+	seller.Use(middleware.JWTAuthMiddleware)
 	{
-		seller.GET("home")
+		// 添加商品
+		seller.POST("add/commodity", v1.SellerAddCommodity)
+		seller.POST("delete/commodity", v1.SellerDeleteCommodity)
+		seller.POST("modify/commodity", v1.SellerModifyCommodity)
+		seller.GET("types/firsts", v1.GetTypesFirsts)
+		seller.GET("types/seconds", v1.GetTypesSeconds)
+
 	}
 
 	admin := apiv1.Group("admin/")
 	{
-		admin.GET("home")
+		admin.GET("types", v1.AdminGetTypes)
+		admin.POST("add/type", v1.AdminAddType)
+		admin.POST("delete/type", v1.AdminDeleteType)
+		admin.POST("modify/type", v1.AdminModifyType)
+
+		admin.GET("users", v1.AdminGetUsers)
+		admin.POST("delete/user")
 	}
 	return r
 }

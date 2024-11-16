@@ -108,9 +108,7 @@ func ShopperShopCart(c *gin.Context) {
 		quantity := body.Quantity
 		var commodity models.Commodities
 		models.DB.Where("id = ?", id).First(&commodity)
-		// 查找商品是否存在
 		if commodity.ID > 0 {
-			// 购物车同一商品，只增加商品购买数量
 			var cart models.Carts
 			models.DB.Where("commodity_id = ? and user_id = ?", id, userId).Find(&cart)
 			if cart.ID > 0 {
@@ -186,20 +184,40 @@ func ShopperPays(c *gin.Context) {
 	fmt.Println(payURL)
 	c.JSON(http.StatusOK, context)
 }
+
 func ShopperLogout(c *gin.Context) {
-	context := gin.H{"state": "fail", "msg": "退出失败"}
-	userId, _ := c.Get("userId")
-	if userId != 0 {
-		authHeader := c.Request.Header.Get("Authorization")
-		if authHeader != "" {
-			var jwts models.Jwts
-			models.DB.Where("token = ?", authHeader).First(&jwts)
-			models.DB.Unscoped().Delete(&jwts)
-			context = gin.H{"state": "success", "msg": "退出成功"}
-		}
+	authHeader := c.Request.Header.Get("Authorization")
+	if authHeader == "" {
+		// 没有Token，直接视为退出成功
+		c.JSON(http.StatusOK, gin.H{"state": "success", "msg": "退出成功"})
+		return
 	}
-	c.JSON(http.StatusOK, context)
+
+	var jwts models.Jwts
+	result := models.DB.Where("token = ?", authHeader).First(&jwts)
+	if result.Error != nil {
+		// 查询过程中出现错误
+		c.JSON(http.StatusInternalServerError, gin.H{"state": "fail", "msg": "查找Token失败"})
+		return
+	}
+
+	if result.RowsAffected == 0 {
+		// Token未找到，但仍视为退出成功
+		c.JSON(http.StatusOK, gin.H{"state": "success", "msg": "退出成功"})
+		return
+	}
+
+	// 删除找到的Token
+	if err := models.DB.Unscoped().Delete(&jwts).Error; err != nil {
+		// 删除Token失败
+		c.JSON(http.StatusInternalServerError, gin.H{"state": "fail", "msg": "删除Token失败"})
+		return
+	}
+
+	// Token删除成功，返回成功响应
+	c.JSON(http.StatusOK, gin.H{"state": "success", "msg": "退出成功"})
 }
+
 func ShopperHome(c *gin.Context) {
 	context := gin.H{"state": "success", "msg": "获取成功"}
 	data := gin.H{}
@@ -214,5 +232,29 @@ func ShopperHome(c *gin.Context) {
 		data["orders"] = orders
 	}
 	context["data"] = data
+	c.JSON(http.StatusOK, context)
+}
+
+func DeleteOrder(c *gin.Context) {
+	// 默认的响应内容
+	context := gin.H{"state": "fail", "msg": "请求失败"}
+
+	// 获取 orderId，进行类型断言
+	orderId, exists := c.Get("orderId")
+	if !exists || orderId == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"state": "fail", "msg": "orderId 不存在"})
+		return
+	}
+
+	// 确保 orderId 是整数类型，进行类型断言
+	orderIdInt, _ := orderId.(int)
+	result := models.DB.Model(&models.Orders{}).Where("id = ?", orderIdInt).Delete(&models.Orders{})
+	if result.Error != nil {
+		context = gin.H{"state": "fail", "msg": "删除失败", "error": result.Error.Error()}
+	} else if result.RowsAffected > 0 {
+		context = gin.H{"state": "success", "msg": "删除成功"}
+	} else {
+		context = gin.H{"state": "fail", "msg": "未找到该订单"}
+	}
 	c.JSON(http.StatusOK, context)
 }

@@ -105,7 +105,6 @@ func JWTAuthMiddleware(c *gin.Context) {
 			return
 		}
 	} else {
-		// Token 已过期，删除表数据
 		models.DB.Unscoped().Delete(&jwts)
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"state": "fail",

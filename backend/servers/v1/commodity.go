@@ -49,7 +49,7 @@ func CommodityList(c *gin.Context) {
 	var res []map[string]interface{}
 	for _, f := range firsts {
 		var seconds = []string{}
-		models.DB.Model(&models.Types{}).Where("first = ?", f).Select("seconds").Find(&seconds)
+		models.DB.Model(&models.Types{}).Where("firsts = ?", f).Select("seconds").Find(&seconds)
 		res = append(res, map[string]interface{}{"name": f, "value": seconds})
 	}
 	data["types"] = res
