@@ -20,8 +20,9 @@ func Home(c *gin.Context) {
 		commodity[0:4], commodity[4:8],
 	}
 	// 分类商品信息
-	var classification = map[string]string{"clothes": "儿童服饰",
-		"food": "奶粉辅食", "books": "书籍"}
+	var classification = map[string]string{"daily": "日常用品",
+		"electronics": "电子产品", "books": "教材书籍", "clothes": "服装配饰", "sports": "体育用品",
+		"healthy": "医疗健康", "entertainment": "娱乐体闲"}
 
 	for k, v := range classification {
 		var types = []string{}
