@@ -228,7 +228,7 @@ func ShopperHome(c *gin.Context) {
 	}
 	if userId != 0 {
 		var orders []models.Orders
-		models.DB.Where("user_id = ?", userId).Order("id DESC").Find(&orders)
+		models.DB.Where("user_id = ? AND deleted_at IS NULL", userId).Order("id DESC").Find(&orders)
 		data["orders"] = orders
 	}
 	context["data"] = data
@@ -247,8 +247,14 @@ func DeleteOrder(c *gin.Context) {
 	}
 
 	// 确保 orderId 是整数类型，进行类型断言
-	orderIdInt, _ := orderId.(int)
-	result := models.DB.Model(&models.Orders{}).Where("id = ?", orderIdInt).Delete(&models.Orders{})
+	orderIdInt, ok := orderId.(int)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"state": "fail", "msg": "orderId 类型错误"})
+		return
+	}
+
+	// 执行软删除
+	result := models.DB.Model(&models.Orders{}).Where("id = ?", orderIdInt).Update("deleted_at", time.Now())
 	if result.Error != nil {
 		context = gin.H{"state": "fail", "msg": "删除失败", "error": result.Error.Error()}
 	} else if result.RowsAffected > 0 {

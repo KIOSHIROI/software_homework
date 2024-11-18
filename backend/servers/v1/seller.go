@@ -11,6 +11,34 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func GetMyCommodities(c *gin.Context) {
+	context := gin.H{"state": "fail", "msg": "获取商品失败"}
+	data := gin.H{}
+	sellerId, _ := c.Get("userId")
+
+	// 确保sellerId是有效的
+	if sellerId == nil {
+		context["msg"] = "无效的卖家ID"
+		c.JSON(http.StatusBadRequest, context)
+		return
+	}
+
+	var commodities []models.Commodities
+	// 根据sellerId查询商品，同时排除软删除的商品
+	err := models.DB.Where("seller_id = ? AND deleted_at IS NULL", sellerId).Find(&commodities).Error
+	if err != nil {
+		context["msg"] = "查询商品失败"
+		c.JSON(http.StatusInternalServerError, context)
+		return
+	}
+
+	data["commodities"] = commodities
+	context["state"] = "success"
+	context["msg"] = "获取商品成功"
+	context["data"] = data
+	c.JSON(http.StatusOK, context)
+}
+
 func SellerAddCommodity(c *gin.Context) {
 	context := gin.H{"state": "fail", "msg": "添加商品失败"}
 
@@ -144,8 +172,8 @@ func SellerDeleteCommodity(c *gin.Context) {
 		return
 	}
 
-	// 删除数据库中的记录
-	err = models.DB.Delete(&commodity).Error
+	// 执行软删除
+	err = models.DB.Model(&commodity).Update("DeletedAt", time.Now()).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除商品失败"})
 		return
