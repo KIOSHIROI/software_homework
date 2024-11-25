@@ -160,3 +160,4 @@ func AdminDeleteType(c *gin.Context) {
 		"msg":   "类型删除成功",
 	})
 }
+

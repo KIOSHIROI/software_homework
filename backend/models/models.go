@@ -19,27 +19,29 @@ type Types struct {
 
 type Commodities struct {
 	gorm.Model
-	Name     string    `json:"name" gorm:"varchar(255)"`
-	Sizes    string    `json:"sizes" gorm:"type:varchar(255)"`
-	Types    string    `json:"types" gorm:"type:varchar(255)"`
-	Price    float64   `json:"price"`
-	Discount float64   `json:"discount"`
-	Stock    int64     `json:"stock"`
-	Sold     int64     `json:"sold"`
-	Likes    int64     `json:"likes"`
-	Created  time.Time `json:"created"`
-	Img      string    `json:"img" gorm:"type:varchar(255)"`
-	Details  string    `json:"details" gorm:"type:varchar(255)"`
-	SellerId int64     `json:"sellerId"`
-	Seller   Users     `json:"-" gorm:"foreignkey:SellerId"`
+	Name      string    `json:"name" gorm:"varchar(255)"`
+	Sizes     string    `json:"sizes" gorm:"type:varchar(255)"`
+	Types     string    `json:"types" gorm:"type:varchar(255)"`
+	Price     float64   `json:"price"`
+	Discount  float64   `json:"discount"`
+	Stock     int64     `json:"stock"`
+	Sold      int64     `json:"sold"`
+	Likes     int64     `json:"likes"`
+	CreatedAt time.Time `json:"createdAt" gorm:"autoCreateTime"`
+	Img       string    `json:"img" gorm:"type:varchar(255)"`
+	Details   string    `json:"details" gorm:"type:varchar(255)"`
+	SellerId  int64     `json:"sellerId"`
+	Seller    Users     `json:"-" gorm:"foreignkey:SellerId"`
 }
 
 type Users struct {
 	gorm.Model
-	Username  string    `json:"username" gorm:"type:varchar(255);unique"`
-	Password  string    `json:"password" gorm:"type:varchar(255)"`
-	IsStaff   int64     `json:"isStaff" gorm:"default:0"`
-	LastLogin time.Time `json:"lastLogin"`
+	Username   string    `json:"username" gorm:"type:varchar(255);unique"`
+	Password   string    `json:"password" gorm:"type:varchar(255)"`
+	IsStaff    int64     `json:"isStaff" gorm:"default:0"`
+	LastLogin  time.Time `json:"lastLogin"`
+	Identified bool      `json:"identified" gorm:"default:0"`
+	CreatedAt  time.Time `json:"createAt" gorm:"autoCreateTime"`
 }
 
 type Carts struct {
@@ -53,11 +55,12 @@ type Carts struct {
 
 type Orders struct {
 	gorm.Model
-	Price   string `json:"price" gorm:"type:varchar(255)"`
-	PayInfo string `json:"payInfo" gorm:"type:varchar(255)"`
-	UserId  int64	`json:"userId"`
-	Users   Users `json:"-" gorm:"foreignkey:UserId"`
-	State   int64 `json:"state"`
+	Price     string    `json:"price" gorm:"type:varchar(255)"`
+	PayInfo   string    `json:"payInfo" gorm:"type:varchar(255)"`
+	UserId    int64     `json:"userId"`
+	Users     Users     `json:"-" gorm:"foreignkey:UserId"`
+	State     int64     `json:"state"`
+	CreatedAt time.Time `json:"createdAt" gorm:"autoCreateTime"`
 }
 
 type Records struct {
@@ -73,6 +76,10 @@ type Jwts struct {
 	Token  string    `json:"token" gorm:"type:varchar(1000)"`
 	Expire time.Time `json:"expire"`
 }
+
+
+
+
 
 // define Hook func of 'Users'
 func (u *Users) BeforeCreate(db *gorm.DB) error {
@@ -107,6 +114,7 @@ func Setup() {
 	DB.AutoMigrate(&Orders{})
 	DB.AutoMigrate(&Records{})
 	DB.AutoMigrate(&Jwts{})
+	DB.AutoMigrate(&Messages{})
 	// set database link-pool
 	sqlDB, _ := DB.DB()
 	//SetMaxIdleConns 设置空闲连接池中连接的最大数量

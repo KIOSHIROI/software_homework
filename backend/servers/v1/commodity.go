@@ -4,10 +4,13 @@ import (
 	"backend/middleware"
 	"backend/models"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func Home(c *gin.Context) {
@@ -129,5 +132,76 @@ func CommodityCollect(c *gin.Context) {
 		context["state"] = "success"
 		models.DB.Unscoped().Delete(&records)
 	}
+	c.JSON(http.StatusOK, context)
+}
+
+func ShopperLogin(c *gin.Context) {
+	context := gin.H{"state": "fail", "msg": "注册或登录失败"}
+
+	var body struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := c.BindJSON(&body); err != nil {
+		context["msg"] = "请求数据无效"
+		c.JSON(http.StatusBadRequest, context)
+		return
+	}
+
+	username := body.Username
+	password := body.Password
+	if username != "" && password != "" {
+		// 生成登录时间
+		lastLogin := time.Now()
+		context["last_login"] = lastLogin.Format("2006-01-02 15:04:05")
+
+		// 查找用户
+		var user models.Users
+		result := models.DB.Where("username = ?", username).First(&user)
+
+		if result.Error == nil {
+			// 用户存在，验证密码
+			fmt.Println("username exists.")
+			err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+
+			if err != nil {
+				context["msg"] = "请输入正确密码"
+			} else {
+				fmt.Println("successful login.")
+				// 登录成功，更新最后登录时间
+				user.LastLogin = lastLogin
+				models.DB.Save(&user)
+
+				context["state"] = "success"
+				context["msg"] = "登录成功"
+				context["result"] = true
+			}
+		} else {
+			newUser := models.Users{
+				Username:  username,
+				Password:  password,
+				IsStaff:   1,
+				LastLogin: lastLogin,
+			}
+
+			if err := models.DB.Create(&newUser).Error; err != nil {
+				context["msg"] = "注册失败"
+				c.JSON(http.StatusInternalServerError, context)
+				return
+			}
+
+			context["state"] = "success"
+			context["msg"] = "注册成功"
+		}
+
+		// 创建Token
+		if user.ID > 0 {
+			token, err := middleware.GenToken(username, int64(user.ID))
+			if err == nil {
+				context["token"] = token
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, context)
 }

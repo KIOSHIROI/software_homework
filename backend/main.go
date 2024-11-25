@@ -10,6 +10,7 @@ import (
 
 func init() {
 	models.Setup()
+
 }
 
 func main() {

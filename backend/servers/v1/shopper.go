@@ -1,90 +1,18 @@
 package v1
 
 import (
-	"backend/middleware"
 	"backend/models"
 	"backend/settings"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/smartwalle/alipay/v3"
-	"golang.org/x/crypto/bcrypt"
 )
-
-func ShopperLogin(c *gin.Context) {
-	context := gin.H{"state": "fail", "msg": "注册或登录失败"}
-
-	var body struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-	}
-	if err := c.BindJSON(&body); err != nil {
-		context["msg"] = "请求数据无效"
-		c.JSON(http.StatusBadRequest, context)
-		return
-	}
-
-	username := body.Username
-	password := body.Password
-	if username != "" && password != "" {
-		// 生成登录时间
-		lastLogin := time.Now()
-		context["last_login"] = lastLogin.Format("2006-01-02 15:04:05")
-
-		// 查找用户
-		var user models.Users
-		result := models.DB.Where("username = ?", username).First(&user)
-
-		if result.Error == nil {
-			// 用户存在，验证密码
-			fmt.Println("username exists.")
-			err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
-
-			if err != nil {
-				context["msg"] = "请输入正确密码"
-			} else {
-				fmt.Println("successful login.")
-				// 登录成功，更新最后登录时间
-				user.LastLogin = lastLogin
-				models.DB.Save(&user)
-
-				context["state"] = "success"
-				context["msg"] = "登录成功"
-				context["result"] = true
-			}
-		} else {
-			newUser := models.Users{
-				Username:  username,
-				Password:  password,
-				IsStaff:   1,
-				LastLogin: lastLogin,
-			}
-
-			if err := models.DB.Create(&newUser).Error; err != nil {
-				context["msg"] = "注册失败"
-				c.JSON(http.StatusInternalServerError, context)
-				return
-			}
-
-			context["state"] = "success"
-			context["msg"] = "注册成功"
-		}
-
-		// 创建Token
-		if user.ID > 0 {
-			token, err := middleware.GenToken(username, int64(user.ID))
-			if err == nil {
-				context["token"] = token
-			}
-		}
-	}
-
-	c.JSON(http.StatusOK, context)
-}
 
 func ShopperShopCart(c *gin.Context) {
 	context := gin.H{"state": "success", "msg": "获取成功"}
@@ -256,5 +184,53 @@ func DeleteOrder(c *gin.Context) {
 	} else {
 		context = gin.H{"state": "fail", "msg": "未找到该订单"}
 	}
+	c.JSON(http.StatusOK, context)
+}
+
+func PostSelfIdentity(c *gin.Context) {
+	context := gin.H{"state": "fail", "msg": "提交失败"}
+
+	// 从表单中获取文件
+	file, err := c.FormFile("img") // "identity_img" 是表单中上传文件的字段名
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "获取图片文件失败", "details": err.Error()})
+		return
+	}
+
+	// 指定文件保存路径，防止文件名冲突
+	savePath := "F:/mall/identity_images/" + time.Now().Format("20060102_150405_") + file.Filename
+
+	// 确保上传目录存在
+	dirPath := "F:/mall/identity_images/"
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		err := os.MkdirAll(dirPath, 0755)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "创建图片目录失败", "details": err.Error()})
+			return
+		}
+	}
+
+	// name := c.PostForm("name")
+	// studentNo := c.PostForm("identity_no")
+
+	if err := c.SaveUploadedFile(file, savePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存图片文件失败", "details": err.Error()})
+		return
+	}
+
+	// 进行数据验证
+	// if name == "" || studentNo == "" {
+	// 	c.JSON(http.StatusBadRequest, gin.H{"error": "姓名或身份证号不能为空"})
+	// 	return
+	// }
+
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "保存个人信息失败", "details": err.Error()})
+	// 	return
+	// }
+
+	// 成功返回信息
+	context["state"] = "success"
+	context["msg"] = "提交成功"
 	c.JSON(http.StatusOK, context)
 }

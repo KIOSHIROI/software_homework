@@ -1,10 +1,11 @@
 package routers
 
 import (
+	"backend/chats"
 	"backend/middleware"
 	v1 "backend/servers/v1"
-	"backend/servers/v1/chats"
 	"backend/settings"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 )
 
 func InitRouter() *gin.Engine {
+
 	gin.SetMode(settings.Mode)
 	r := gin.New()
 	r.Use(gin.Logger())
@@ -27,20 +29,17 @@ func InitRouter() *gin.Engine {
 		AllowCredentials: true,
 	}))
 
+	r.GET("/ws", func(c *gin.Context) {
+		fmt.Println("ws running.")
+		chats.HandleConnections(c.Writer, c.Request)
+	})
 	// 定义路由
 	apiv1 := r.Group("api/v1/")
-
-	chat := chats.NewChat()
-	go chat.Run()
-
-	r.LoadHTMLFiles("index.html")
-
-	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", nil)
-	})
-	r.GET("/chat/", func(ctx *gin.Context) {
-		chats.CreateWs(ctx, chat)
-	})
+	chatGroup := r.Group("/api/v1/chat")
+	{
+		chatGroup.POST("/message", v1.SaveMessageHandler)
+		chatGroup.GET("/history", v1.GetChatHistoryHandler) // 获取聊天记录
+	}
 
 	commodity := apiv1.Group("")
 	{
@@ -71,12 +70,14 @@ func InitRouter() *gin.Engine {
 		// 删除购物车商品
 		shopper.POST("shopper/delete/", v1.ShopperDelete)
 		shopper.POST("shopper/order/delete", v1.DeleteOrder)
+		shopper.POST("shopper/identify", v1.PostSelfIdentity)
 	}
 
 	seller := apiv1.Group("seller/")
 	seller.Use(middleware.JWTAuthMiddleware)
 	{
 		// 添加商品
+		seller.GET("commodities", v1.GetMyCommodities)
 		seller.POST("add/commodity", v1.SellerAddCommodity)
 		seller.POST("delete/commodity", v1.SellerDeleteCommodity)
 		seller.POST("modify/commodity", v1.SellerModifyCommodity)
