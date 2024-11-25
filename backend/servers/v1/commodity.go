@@ -18,19 +18,20 @@ func Home(c *gin.Context) {
 	data := gin.H{}
 	// 今日必抢商品信息
 	var commodity []models.Commodities
-	models.DB.Order("sold DESC").Find(&commodity)
+	models.DB.Where("deleted_at IS NULL").Order("sold DESC").Find(&commodity)
 	data["commodityInfos"] = [][]models.Commodities{
 		commodity[0:4], commodity[4:8],
 	}
 	// 分类商品信息
-	var classification = map[string]string{"clothes": "儿童服饰",
-		"food": "奶粉辅食", "books": "书籍"}
+	var classification = map[string]string{"daily": "日常用品",
+		"electronics": "电子产品", "books": "教材书籍", "clothes": "服装配饰", "sports": "体育用品",
+		"healthy": "医疗健康", "entertainment": "娱乐体闲"}
 
 	for k, v := range classification {
 		var types = []string{}
 		var temp []models.Commodities
 		models.DB.Model(&models.Types{}).Where("firsts = ?", v).Select("seconds").Find(&types)
-		models.DB.Where("types in ?", types).Order("sold DESC").Find(&temp)
+		models.DB.Where("types in (?) AND deleted_at IS NULL", types).Order("sold DESC").Find(&temp)
 		data[k] = temp[0:5]
 	}
 	context["data"] = data
@@ -58,12 +59,12 @@ func CommodityList(c *gin.Context) {
 	data["types"] = res
 	// 商品列表信息
 	var commodity []models.Commodities
-	querys := models.DB.Model(&models.Commodities{})
+	querys := models.DB.Model(&models.Commodities{}).Where("deleted_at IS NULL")
 	if types != "" {
 		querys = querys.Where("types = ?", types)
 	}
 	if sort != "" {
-		querys = querys.Where(sort + "DESC")
+		querys = querys.Order(sort + "DESC")
 	}
 	if search != "" {
 		querys = querys.Where("name like ?", "%"+search+"%")
@@ -77,6 +78,7 @@ func CommodityList(c *gin.Context) {
 	context["data"] = data
 	c.JSON(http.StatusOK, context)
 }
+
 func CommodityDetail(c *gin.Context) {
 	context := gin.H{"state": "success", "msg": "获取成功"}
 	data := gin.H{}
